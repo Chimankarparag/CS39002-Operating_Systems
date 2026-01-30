@@ -117,7 +117,6 @@ void state_loop(int state_num){
 
     while(1){
 
-        dup2(fd[state_num + 1][0], STDIN_FILENO);
         scanf("%d", &command);
 
         if(command == QUIT){
@@ -141,14 +140,6 @@ void state_loop(int state_num){
 
             // check for final state and final symbol
             if( transition_sym =='$'){
-                dup2(og_stdout,STDOUT_FILENO);
-                if(is_final){
-                    printf(" ACCEPT\n");
-                }
-                else{
-                    printf(" REJECT\n");
-                }
-                fflush(stdout);
 
                 dup2(fd[0][1], STDOUT_FILENO);
                 printf ("%d\n", state_num);
@@ -203,12 +194,7 @@ void user_loop(){
         if(fgets(input, sizeof(input), stdin)== NULL){
             break;
         }
-
-        input[strcspn(input,"\n")]=0;
-        if (input[0] == '\0') {
-            // printf("\n");
-            continue;
-        }
+        input[strcspn(input, "\n")] = 0;
 
         printf("%d",0);
         fflush(stdout);
@@ -216,36 +202,61 @@ void user_loop(){
         dup2(fd[1][1], STDOUT_FILENO);
         printf("%d\n", TRANSITION);
         fflush(stdout);
-        
+
+        // debug here , clean the stdin for remaining buffer of null or newline
+        // tells coordinator that the state is ready
+        dup2(fd[0][0], STDIN_FILENO);
+        if (scanf("%d", &current_state) != 1) break; 
+        getchar();
+
         invalid_input = 0;
 
-        for (marker = 0; input[marker] != '\0' && !invalid_input; marker++) {
-            dup2(fd[0][0], STDIN_FILENO);
-            scanf("%d", &current_state);
-            
-            dup2(fd[current_state + 1][1], STDOUT_FILENO);
-            printf("%c\n", input[marker]);
-            fflush(stdout);
+
+        for (marker = 0; input[marker] != '\0'; marker++) {
 
             int symbol_idx = input[marker] - 'a';
             if (symbol_idx < 0 || symbol_idx >= s) {
+                // Send the invalid char to state so it prints the error message
+                dup2(fd[current_state + 1][1], STDOUT_FILENO);
+                printf("%c\n", input[marker]);
+                fflush(stdout);
+                
                 invalid_input = 1;
+                break; // Stop processing this string
             }
-        }
-        
-        if (!invalid_input) {
+            dup2(fd[current_state + 1][1], STDOUT_FILENO);
+            printf("%c\n", input[marker]);
+            fflush(stdout);
+            
+            // Wait for the NEXT state to acknowledge activation
             dup2(fd[0][0], STDIN_FILENO);
             scanf("%d", &current_state);
-            
+            getchar();
+
+        }
+        
+        if (!invalid_input) {            
             dup2(fd[current_state + 1][1], STDOUT_FILENO);
             printf("$\n");
             fflush(stdout);
+
+            dup2(fd[0][0], STDIN_FILENO);
+            scanf("%d", &current_state);
+            getchar();
         }
 
         dup2(og_stdout, STDOUT_FILENO);
-        printf("\n");
+        if (states[current_state].is_final) {
+            printf(" ACCEPT\n");
+        } else {
+            printf(" REJECT\n");
+        }
         fflush(stdout);
     }
+
+    dup2(og_stdout, STDOUT_FILENO);
+    printf("\n");
+    fflush(stdout);
 
 }
 
@@ -255,6 +266,9 @@ int main(int argc, char *argv[]) {
     int i, j, state_num;
     char final_marker;
     pid_t pid;
+
+    // there was some excess buffer of '\0' and '\n' in stdin, to prevent it 
+    setvbuf(stdin, NULL, _IONBF, 0);
 
     if( argc == 1){
         filename = "dfa.txt";

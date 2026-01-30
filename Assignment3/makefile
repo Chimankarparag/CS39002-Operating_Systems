@@ -15,7 +15,7 @@ verbose: rundfa.c
 verbose-chat: chat2.c
 	$(CC) $(CFLAGS) -D_VERBOSE -o rundfa chat2.c
 
-run-verbose: verbose-chat
+run-verbose: verbose
 	./rundfa thirdlast.txt
 
 run-gendfa: gendfa

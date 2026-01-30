@@ -2,10 +2,6 @@
 // Parag Mahadeo Chimankar
 // rundfa.c
 
-/*
-  (keeps original overview and constraints)
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +45,6 @@ void terminate_processes_handler(int signal){
         fflush(stdout);
     }
 
-    // coordinator to print to stdout(terminal)
     dup2(og_stdout, STDOUT_FILENO);
 
     for (int i = 0; i < n; i++) {
@@ -65,61 +60,29 @@ void terminate_processes_handler(int signal){
     exit(0);
 }
 
-/* helper: read one line from stdin (which will be redirected to a pipe fd) */
-int read_line_from_stdin(char *buf, size_t bufsz) {
-    if (fgets(buf, (int)bufsz, stdin) == NULL) return -1;
-    size_t L = strlen(buf);
-    if (L && buf[L-1] == '\n') buf[L-1] = '\0';
-    return 0;
-}
-
 void state_loop(int state_num){
-    // state gets the command from the controller/other states
     int command;
     int next_state;
-
     char transition_sym = 0;
     int is_final = 0;
     int transition[MAX_ALPHABET];
 
-    char linebuf[128];
-
-    // ignore SIGINT
     signal(SIGINT, SIG_IGN);
 
     // redirect this child's stdin to its pipe read end
     if (dup2(fd[state_num + 1][0], STDIN_FILENO) == -1) {
-        perror("dup2 failed in child");
         exit(1);
     }
 
-    /* read state information from coordinator (line-based) */
-    if (read_line_from_stdin(linebuf, sizeof(linebuf)) == -1) exit(1);
-    if (sscanf(linebuf, "%d", &is_final) != 1) exit(1);
-
-    if (read_line_from_stdin(linebuf, sizeof(linebuf)) == -1) exit(1);
-    {
-        char *p = linebuf;
-        for (int i = 0; i < s; i++) {
-            int t;
-            if (sscanf(p, "%d", &t) != 1) exit(1);
-            transition[i] = t;
-            // advance p past parsed integer
-            while (*p && *p != ' ') p++;
-            while (*p == ' ') p++;
-        }
+    // Read initialization
+    if (scanf("%d", &is_final) != 1) exit(1);
+    for (int i = 0; i < s; i++) {
+        if (scanf("%d", &transition[i]) != 1) exit(1);
     }
 
     while (1) {
-        /* wait for command line */
-        if (read_line_from_stdin(linebuf, sizeof(linebuf)) == -1) {
-            // parent might have closed pipe; exit cleanly
-            exit(0);
-        }
-        if (sscanf(linebuf, "%d", &command) != 1) {
-            // malformed command, ignore and continue
-            continue;
-        }
+        // Wait for command
+        if (scanf("%d", &command) != 1) exit(0);
 
         if (command == QUIT) {
             #ifdef _VERBOSE
@@ -131,34 +94,26 @@ void state_loop(int state_num){
         }
 
         if (command == TRANSITION) {
-            /* inform the coordinator about its current state */
+            // 1. Acknowledge activation (Send ID to coordinator)
             dup2(fd[0][1], STDOUT_FILENO);
             printf("%d\n", state_num);
             fflush(stdout);
 
-            /* read next symbol line (line-based) */
-            if (read_line_from_stdin(linebuf, sizeof(linebuf)) == -1) {
-                // EOF => exit
-                exit(0);
-            }
-            if (sscanf(linebuf, " %c", &transition_sym) != 1) {
-                // malformed; print invalid symbol message
-                dup2(og_stdout, STDOUT_FILENO);
-                printf(" INVALID INPUT SYMBOL: (none)\n");
-                fflush(stdout);
-                continue;
-            }
+            // 2. Read symbol
+            dup2(fd[state_num + 1][0], STDIN_FILENO);
+            // Use " %c" to handle potential whitespace, though parent handles newlines now
+            if (scanf(" %c", &transition_sym) != 1) exit(0);
 
-            /* check for final symbol */
+            // 3. Handle End-of-Input
             if (transition_sym == '$') {
-                /* let coordinator know (send current state back) */
+                // Acknowledge receipt of $ (Coordinator waits for this before printing result)
                 dup2(fd[0][1], STDOUT_FILENO);
                 printf("%d\n", state_num);
                 fflush(stdout);
                 continue;
             }
 
-            /* validate symbol */
+            // 4. Validate Symbol
             int valid = transition_sym - 'a';
             if (valid < 0 || valid >= s) {
                 dup2(og_stdout, STDOUT_FILENO);
@@ -167,13 +122,14 @@ void state_loop(int state_num){
                 continue;
             }
 
+            // 5. Transition
             next_state = transition[valid];
 
-            dup2(og_stdout, STDOUT_FILENO); // print to terminal
+            dup2(og_stdout, STDOUT_FILENO); 
             printf(" -- %c --> %d", transition_sym, next_state);
             fflush(stdout);
 
-            /* send TRANSITION command to next state */
+            // 6. Wake up next state
             dup2(fd[next_state + 1][1], STDOUT_FILENO);
             printf("%d\n", TRANSITION);
             fflush(stdout);
@@ -182,7 +138,6 @@ void state_loop(int state_num){
 }
 
 void user_loop(){
-
     char input[MAX_USER_INPUT];
     int marker;
     int current_state;
@@ -204,70 +159,65 @@ void user_loop(){
         }
 
         input[strcspn(input, "\n")] = 0;
-        if (input[0] == '\0') {
-            printf("\n");
-            continue;
-        }
+        
+        // FIX 1: Removed empty string check. Empty strings are now processed.
 
-        /* print starting state number */
+        /* Print starting state visual */
         printf("%d", 0);
         fflush(stdout);
 
-        /* send TRANSITION command to state 0 */
+        /* 1. Send TRANSITION command to State 0 */
         dup2(fd[1][1], STDOUT_FILENO);
         printf("%d\n", TRANSITION);
         fflush(stdout);
 
+        /* 2. Wait for State 0 to acknowledge it is active */
+        // We MUST read this before entering the loop to ensure sync
+        dup2(fd[0][0], STDIN_FILENO);
+        if (scanf("%d", &current_state) != 1) break; 
+        getchar(); // FIX 2: Consume the '\n' left by scanf in the pipe!
+
         invalid_input = 0;
 
-        for (marker = 0; input[marker] != '\0' && !invalid_input; marker++) {
-            /* read current_state from coordinator pipe fd[0] (line-based) */
-            dup2(fd[0][0], STDIN_FILENO);
-            {
-                char linebuf[64];
-                if (fgets(linebuf, sizeof(linebuf), stdin) == NULL) {
-                    invalid_input = 1;
-                    break;
-                }
-                if (sscanf(linebuf, "%d", &current_state) != 1) {
-                    invalid_input = 1;
-                    break;
-                }
+        /* 3. Loop through characters */
+        for (marker = 0; input[marker] != '\0'; marker++) {
+            
+            // Check validity BEFORE sending to avoid getting stuck
+            int symbol_idx = input[marker] - 'a';
+            if (symbol_idx < 0 || symbol_idx >= s) {
+                // Send the invalid char to state so it prints the error message
+                dup2(fd[current_state + 1][1], STDOUT_FILENO);
+                printf("%c\n", input[marker]);
+                fflush(stdout);
+                
+                invalid_input = 1;
+                break; // Stop processing this string
             }
 
-            /* send the character to the current state's pipe (line) */
+            // Send valid char to current state
             dup2(fd[current_state + 1][1], STDOUT_FILENO);
             printf("%c\n", input[marker]);
             fflush(stdout);
 
-            int symbol_idx = input[marker] - 'a';
-            if (symbol_idx < 0 || symbol_idx >= s) {
-                invalid_input = 1;
-            }
+            // Wait for the NEXT state to acknowledge activation
+            dup2(fd[0][0], STDIN_FILENO);
+            scanf("%d", &current_state);
+            getchar(); // FIX 2: Consume the '\n'
         }
 
+        /* 4. Handle Result */
         if (!invalid_input) {
-            /* get current_state before sending $ */
-            dup2(fd[0][0], STDIN_FILENO);
-            {
-                char linebuf[64];
-                if (fgets(linebuf, sizeof(linebuf), stdin) == NULL) {
-                    // treat as reject if we can't get it
-                } else {
-                    sscanf(linebuf, "%d", &current_state);
-                }
-            }
-
-            /* send end-of-string marker */
+            // Send '$' to the LAST active state
             dup2(fd[current_state + 1][1], STDOUT_FILENO);
             printf("$\n");
             fflush(stdout);
             
-            // read final state
+            // Wait for state to confirm it received '$'
             dup2(fd[0][0], STDIN_FILENO);
             scanf("%d", &current_state);
+            getchar(); // FIX 2: Consume the '\n'
 
-            // print result ONLY here
+            // Print Verdict
             dup2(og_stdout, STDOUT_FILENO);
             if (states[current_state].is_final) {
                 printf(" ACCEPT\n");
@@ -290,60 +240,52 @@ int main(int argc, char *argv[]) {
     char final_marker;
     pid_t pid;
 
+    // Disable buffering on stdin to prevent mixed-IO issues
+    setvbuf(stdin, NULL, _IONBF, 0);
+
     if (argc == 1) {
         filename = "dfa.txt";
     } else {
         filename = argv[1];
     }
-    // save original stdio
+    
     og_stdin = dup(STDIN_FILENO);
     og_stdout = dup(STDOUT_FILENO);
 
-    // open the dfa input file
     fp = fopen(filename, "r");
     if (fp == NULL) {
         fprintf(stderr, "Error: Cannot open file %s\n", filename);
         exit(1);
     }
 
-    // read the dfa file
-    if (fscanf(fp, "%d", &s) != 1) { fprintf(stderr, "bad dfa file\n"); exit(1); }
-    if (fscanf(fp, "%d", &n) != 1) { fprintf(stderr, "bad dfa file\n"); exit(1); }
+    if (fscanf(fp, "%d", &s) != 1) exit(1);
+    if (fscanf(fp, "%d", &n) != 1) exit(1);
     for (i = 0; i < n; i++) {
-        if (fscanf(fp, "%d %c", &state_num, &final_marker) != 2) { fprintf(stderr, "bad dfa file\n"); exit(1); }
+        fscanf(fp, "%d %c", &state_num, &final_marker);
         states[state_num].is_final = (final_marker == 'F') ? 1 : 0;
         for (j = 0; j < s; j++) {
-            if (fscanf(fp, "%d", &states[state_num].transition[j]) != 1) { fprintf(stderr, "bad dfa file\n"); exit(1); }
+            fscanf(fp, "%d", &states[state_num].transition[j]);
         }
     }
     fclose(fp);
 
     for (i = 0; i <= n; i++) {
         if (pipe(fd[i]) == -1) {
-            perror("pipe");
-            exit(1);
+            perror("pipe"); exit(1);
         }
     }
 
-    // create child processes
     for (i = 0; i < n; i++) {
         pid = fork();
-
-        if (pid == -1) {
-            perror("fork");
-            exit(1);
-        }
-
+        if (pid == -1) { perror("fork"); exit(1); }
         if (pid == 0) {
-            // child: close unrelated fds? not strictly necessary here
             state_loop(i);
             exit(0);
         }
     }
 
-    sleep(1); // parents waits for 1 sec for child to be ready at read
+    sleep(1); 
 
-    // send the state info (two lines per state): first line is final flag, second line is transitions
     for (i = 0; i < n; i++) {
         dup2(fd[i + 1][1], STDOUT_FILENO);
         printf("%d\n", states[i].is_final);
@@ -371,7 +313,6 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, terminate_processes_handler);
 
     user_loop();
-    // if user_loop ends without signal , terminate
     terminate_processes_handler(SIGINT);
 
     return 0;
