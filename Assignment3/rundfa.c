@@ -84,7 +84,7 @@ void terminate_processes_handler(int signal){
     }
 
     #ifndef _VERBOSE
-        printf(" +++ Coordinator: All state processes terminated. Bye.\n");
+        printf("\n +++ Coordinator: All state processes terminated. Bye.\n");
     #else
         printf("        +++ Coordinator: Bye\n");
     #endif
@@ -141,6 +141,14 @@ void state_loop(int state_num){
             // check for final state and final symbol
             if( transition_sym =='$'){
 
+                dup2(og_stdout, STDOUT_FILENO);
+                if (is_final) {
+                    printf(" ACCEPT\n");
+                } else {
+                    printf(" REJECT\n");
+                }
+                fflush(stdout);
+
                 dup2(fd[0][1], STDOUT_FILENO);
                 printf ("%d\n", state_num);
                 fflush(stdout);
@@ -152,6 +160,10 @@ void state_loop(int state_num){
             if(valid < 0 || valid >= s){
                 dup2(og_stdout,STDOUT_FILENO);
                 printf(" INVALID INPUT SYMBOL: %c\n", transition_sym);
+                fflush(stdout);
+
+                dup2(fd[0][1], STDOUT_FILENO);
+                printf ("%d\n", -1);
                 fflush(stdout);
                 continue;
             }
@@ -178,7 +190,6 @@ void user_loop(){
     char input[MAX_USER_INPUT];
     int marker;
     int current_state;
-    int invalid_input;
 
     #ifdef _VERBOSE
     printf(" +++ Coordinator: Going to user loop\n");
@@ -203,55 +214,41 @@ void user_loop(){
         printf("%d\n", TRANSITION);
         fflush(stdout);
 
-        // debug here , clean the stdin for remaining buffer of null or newline
+        // clean the stdin for remaining buffer of null or newline
         // tells coordinator that the state is ready
         dup2(fd[0][0], STDIN_FILENO);
         if (scanf("%d", &current_state) != 1) break; 
         getchar();
 
-        invalid_input = 0;
-
-
         for (marker = 0; input[marker] != '\0'; marker++) {
 
-            int symbol_idx = input[marker] - 'a';
-            if (symbol_idx < 0 || symbol_idx >= s) {
-                // Send the invalid char to state so it prints the error message
-                dup2(fd[current_state + 1][1], STDOUT_FILENO);
-                printf("%c\n", input[marker]);
-                fflush(stdout);
-                
-                invalid_input = 1;
-                break; // Stop processing this string
-            }
             dup2(fd[current_state + 1][1], STDOUT_FILENO);
             printf("%c\n", input[marker]);
             fflush(stdout);
             
-            // Wait for the NEXT state to acknowledge activation
+            // Wait for the next state to acknowledge activation
             dup2(fd[0][0], STDIN_FILENO);
             scanf("%d", &current_state);
             getchar();
+
+            if(current_state ==-1){
+                break;
+            }
 
         }
         
-        if (!invalid_input) {            
-            dup2(fd[current_state + 1][1], STDOUT_FILENO);
-            printf("$\n");
-            fflush(stdout);
-
-            dup2(fd[0][0], STDIN_FILENO);
-            scanf("%d", &current_state);
-            getchar();
+        if(current_state ==-1){
+            continue;
         }
-
-        dup2(og_stdout, STDOUT_FILENO);
-        if (states[current_state].is_final) {
-            printf(" ACCEPT\n");
-        } else {
-            printf(" REJECT\n");
-        }
+                   
+        dup2(fd[current_state + 1][1], STDOUT_FILENO);
+        printf("$\n");
         fflush(stdout);
+
+        dup2(fd[0][0], STDIN_FILENO);
+        scanf("%d", &current_state);
+        getchar();
+        
     }
 
     dup2(og_stdout, STDOUT_FILENO);
