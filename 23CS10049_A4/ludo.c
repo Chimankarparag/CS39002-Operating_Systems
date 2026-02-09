@@ -42,9 +42,8 @@ int read_board(int *board ){
         }
 
     }
-    fclose(0);
+    fclose(fp);
     return 0;
-
 }
 
 int main(int argc, char* argv[]){
@@ -61,8 +60,9 @@ int main(int argc, char* argv[]){
 
     //printf("debug: init shared memory key\n");
 
-    key_t key_MB = ftok(".",'B');
-    key_t key_MP = ftok(".",'P');
+    key_t key_MB = ftok("ludo.txt", 'B');
+    key_t key_MP = ftok("ludo.txt", 'P');
+
     
     int shmid_MB = shmget(key_MB, BOARDSIZE*sizeof(int),IPC_CREAT|IPC_EXCL|0666);
     if(shmid_MB==-1){
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
-    //printf("debug: init the MB\n");
+    // printf("debug: init the MB\n");
     // init MB
     if (read_board(MB) == -1) {
         shmdt(MB);
@@ -97,11 +97,11 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
-    shmdt(MB); 
-    struct shmid_ds shm_desc;
-    shmctl(shmid_MB, IPC_STAT, &shm_desc);
-    shm_desc.shm_perm.mode = 0444; 
-    shmctl(shmid_MB, IPC_SET, &shm_desc);
+    // shmdt(MB); 
+    // struct shmid_ds shm_desc;
+    // shmctl(shmid_MB, IPC_STAT, &shm_desc);
+    // shm_desc.shm_perm.mode = 0444; 
+    // shmctl(shmid_MB, IPC_SET, &shm_desc);
 
     // for reattaching
     // MB = (int *)shmat(shmid_MB,SHM_RDONLY,0);
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
     sprintf(str_num_players,"%d",num_players);
 
     pid_t XBP_pid = fork();
-        if (XBP_pid == -1) {
+    if (XBP_pid == -1) {
         perror("fork XBP");
         close(pfd[PIPE_READ]);
         close(pfd[PIPE_WRITE]);
@@ -219,6 +219,8 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
+    // printf("debug: pp_pid read \n");
+
     char ack;
     if (read(pfd[PIPE_READ], &ack, 1) != 1) {
         perror("read initial ack from BP");
@@ -296,7 +298,6 @@ int main(int argc, char* argv[]){
                 printf("Delay(ms) = %d\n",delay_ms);
                 autoplay = 1;
             } else if (strcmp(command, "quit") == 0) {
-                printf("Quitting game...\n");
                 printf("Hit return to end the game...\n");
                 fflush(stdout);
                 getchar();
@@ -309,7 +310,7 @@ int main(int argc, char* argv[]){
     }
     
 
-    printf("\nTerminating...\n");
+    printf("Terminating...\n");
     kill(pp_pid, SIGUSR2);
     waitpid(XPP_pid, NULL, 0);
     printf("Player processes terminated.\n");

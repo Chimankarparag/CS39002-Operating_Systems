@@ -24,5 +24,5 @@ clean:
 	@echo "Cleaning up shared memory segments..."
 	@-ipcs -m | grep `whoami` | awk '{print $$2}' | xargs -I {} ipcrm -m {} 2>/dev/null || true
 	@echo "Cleanup complete."
-	
+
 .PHONY: all compile run clean

@@ -36,6 +36,11 @@ void sigusr1_handler_pp(int sig){
 void sigusr1_handler_player(int sig) {
     my_turn = 1;
 }
+void sigusr2_handler_child(int sig) {
+    shmdt(MB);
+    shmdt(MP);
+    exit(0);
+}
 
 void sigusr2_handler_pp(int sig){
     for(int i = 0;i<num_players;i++){
@@ -49,19 +54,23 @@ void sigusr2_handler_pp(int sig){
             waitpid(player_pids[i], &status, 0);
             printf("Player %c terminated.\n", 'A' + i);
             fflush(stdout);
-            sleep(1); 
+            //sleep(1); 
         }
     }
 
     shmdt(MB);
     shmdt(MP);
     close(CP_pfd_write);
-    
     free(player_pids);
+
+    printf("\nAll Players exited. Closing Players window...\n");
+    fflush(stdout);
+    sleep(3); 
     exit(0);
 }
 
 void make_move(int player_idx) {
+    printf("******************************\n");
     char player_name = 'A' + player_idx;
     int pos = MP[player_idx];
     
@@ -70,40 +79,36 @@ void make_move(int player_idx) {
     }
     
     int total = 0;
-    int dice[3];
-    int num_rolls = 0;
-    
+    int six_counter =0;
+    int throw;
+    printf("Player %c: ",player_name);
+    fflush(stdout);
     while (1) {
-        num_rolls = 0;
-        total = 0;
+        throw = roll_dice();
+        printf("%d",throw);
+        fflush(stdout);
         
-        dice[num_rolls++] = roll_dice();
-        total = dice[0];
-        
-        if (dice[0] == 6) {
-            dice[num_rolls++] = roll_dice();
-            total += dice[1];
-            
-            if (dice[1] == 6) {
-                dice[num_rolls++] = roll_dice();
-                total += dice[2];
-                
-                if (dice[2] == 6) {
-                    printf("Player %c: %d + %d + %d X\n", 
-                           player_name, dice[0], dice[1], dice[2]);
-                    fflush(stdout);
-                    continue;
-                }
+        if(throw == 6){
+            six_counter++;            
+            total+=throw;
+            if(six_counter!=3){
+                printf(" + ");
+                fflush(stdout);
+            }else{
+                printf(" X ");
+                total =0;
+                six_counter=0;
+                fflush(stdout);
             }
+
+        }else{
+            total+=throw;
+            six_counter=0;
+            break;
         }
-        break;
     }
-
-    printf("Player %c: %d", player_name, dice[0]);
-    for (int i = 1; i < num_rolls; i++) {
-        printf(" + %d", dice[i]);
-    }
-
+    printf("\n");
+    fflush(stdout);
     int nextpos = pos + total;
     
     if (nextpos > 100) {
@@ -139,7 +144,10 @@ void make_move(int player_idx) {
             return;
         }
     }
-    printf("Player %c moves to cell %d", 'A'+player_idx, nextpos);
+
+    if(nextpos !=100) printf("Player %c moves to cell %d\n", player_name, nextpos);
+    else printf("Player %c exits with rank = %d\n", player_name,num_players-MP[num_players]+1);
+
     
     fflush(stdout);
     
@@ -165,6 +173,9 @@ void player_main(int player_idx) {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGUSR1, &sa, NULL);
+
+    sa.sa_handler = sigusr2_handler_child;
+    sigaction(SIGUSR2, &sa, NULL);
     
     while (1) {
         pause(); 
@@ -197,8 +208,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Attach to shared memory segments
-    key_t key_MB = ftok(".", 'B');
-    key_t key_MP = ftok(".", 'P');
+    key_t key_MB = ftok("ludo.txt", 'B');
+    key_t key_MP = ftok("ludo.txt", 'P');
+
     
     int shmid_MB = shmget(key_MB, BOARD_SIZE * sizeof(int), 0666);
     int shmid_MP = shmget(key_MP, (num_players + 1) * sizeof(int), 0666);

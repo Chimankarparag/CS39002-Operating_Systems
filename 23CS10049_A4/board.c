@@ -20,54 +20,65 @@ volatile sig_atomic_t print_requested = 0;
 void sigusr1_handler(int sig) {
     print_requested = 1;
 }
-
-void print_board() {
-    printf("\033[2J\033[H");  // Clear screen
-    
-    for (int row = 9; row >= 0; row--) {
-        printf("|");
-        if (row % 2 == 1) {
-            for (int col = 0; col < 10; col++) {
-                int cell = row * 10 + col + 1;
-                printf("%3d", cell);
-                
-                if (MB[cell] > 0) printf(" L");
-                else if (MB[cell] < 0) printf(" S");
-                else printf("  ");
-                
-                printf("|");
-            }
-        } else {
-            for (int col = 9; col >= 0; col--) {
-                int cell = row * 10 + col + 1;
-                printf("%3d", cell);
-                
-                if (MB[cell] > 0) printf(" L");
-                else if (MB[cell] < 0) printf(" S");
-                else printf("  ");
-                
-                printf("|");
-            }
+void print_cell_content(int cell) {
+    int occupied = -1;
+    for (int i = 0; i < num_players; i++) {
+        if (MP[i] == cell && cell != 100) {
+            occupied = i;
+            break;
         }
-        printf("\n");
     }
 
-    printf("\n");
+    if (occupied != -1) {
+        printf(" %c |", 'A' + occupied);
+    } else {
+        printf("%3d|", cell);
+    }
+}
+
+void print_board() {
+    printf("\033[H"); 
+
     for (int i = 0; i < num_players; i++) {
         if (MP[i] == 100) {
             printf("%c ", 'A' + i);
         }
     }
-    printf("\n");
-    
+    printf("                                \n"); 
+
+    for (int row = 9; row >= 0; row--) {
+        printf("+---+---+---+---+---+---+---+---+---+---+\n");
+
+        printf("|");
+        if (row % 2 == 0) { 
+            for (int col = 0; col < 10; col++) {
+                int cell = row * 10 + col + 1;
+                print_cell_content(cell);
+            }
+        } else { 
+            for (int col = 9; col >= 0; col--) {
+                int cell = row * 10 + col + 1;
+                print_cell_content(cell);
+            }
+        }
+        printf("\t"); 
+        for (int col = 0; col < 10; col++) {
+            int cell = row * 10 + col + 1;
+            if (MB[cell] > 0) {
+                printf("L(%2d -> %2d) ", cell, cell + MB[cell]);
+            } else if (MB[cell] < 0) {
+                printf("S(%2d -> %2d) ", cell, cell + MB[cell]);
+            }
+        }
+        printf("\n");
+    }
+    printf("+---+---+---+---+---+---+---+---+---+---+\n");
     for (int i = 0; i < num_players; i++) {
-        if (MP[i] > 0 && MP[i] < 100) {
-            printf("%c(%d) ", 'A' + i, MP[i]);
-        } else if (MP[i] == 0) {
+        if (MP[i] == 0) {
             printf("%c ", 'A' + i);
         }
     }
-    printf("\n");
+    printf("\033[J"); 
     fflush(stdout);
 }
 
@@ -88,8 +99,9 @@ int main(int argc, char *argv[]) {
     
     sleep(1);
     
-    key_t key_MB = ftok(".", 'B');
-    key_t key_MP = ftok(".", 'P');
+    key_t key_MB = ftok("ludo.txt", 'B');
+    key_t key_MP = ftok("ludo.txt", 'P');
+
     
     int shmid_MB = shmget(key_MB, BOARD_SIZE * sizeof(int), 0666);
     int shmid_MP = shmget(key_MP, (num_players+ 1) * sizeof(int), 0666);
@@ -99,7 +111,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     
-    MB = (int *)shmat(shmid_MB, NULL, 0);
+    MB = (int *)shmat(shmid_MB, NULL, SHM_RDONLY);
     MP = (int *)shmat(shmid_MP, NULL, 0);
     
     if (MB == (int *)-1 || MP == (int *)-1) {
