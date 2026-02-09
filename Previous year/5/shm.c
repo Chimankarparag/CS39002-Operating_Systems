@@ -20,7 +20,7 @@
 
 main()
 {
-	int shmid. status;
+	int shmid, status;
 	int *a, *b;
 	int i;
 
@@ -125,7 +125,7 @@ main()
 	exist in the process in a real world application.
 
 	Also, we have called the different shared memory related
-	functions such as shmget, shmat, shmdt, and shmctl, assuming
+	functions such as shmget, shmat, shmdt, and, assuming
 	that they always succeed and never fail. This is done to
 	keep this proram simple. In practice, you should always check for
         the return values from this function and exit if there is 
