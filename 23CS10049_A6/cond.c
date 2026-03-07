@@ -16,14 +16,11 @@ typedef struct{
 #define MTX 0
 #define CND 1
 
-// if the environment/system already has semun declared 
-// comment the below declaration as it may lead to ambiquity 
-
-// union semun {
-//     int val;
-//     struct semid_ds *buf;
-//     unsigned short *array;
-// };
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+};
 
 cond_t cond_create(key_t token1, key_t token2){
     cond_t CV;
@@ -36,6 +33,9 @@ void cond_init(cond_t CV){
 
     // init semaphore
     union semun arg;
+    // if the environment/system already has semun declared keep lines 19-23 commented
+    // else uncomment it 
+    // (if system already has its declaration) -> keep the lines commented
     arg.val=1;
     semctl(CV.semid, MTX, SETVAL, arg);
 

@@ -48,14 +48,14 @@ void demon_loop(int demon_id){
 
         cond_lock(CV);
         H->demon_count--;
-        printf("Demon %d leaves (D_CNT=%d, N_CNT=%d, state = %s)\n", demon_id, H->demon_count, H->nomad_count, state_str[H->state]);
-
+        
         if(H->demon_count == 0) {
             H->state = EMPTY;
             // we need to check if nomad is waiting then only send the signal else we have positive sem
             // and demon/nomad can bypass cond_wait
             if(H->nomad_wait_count>0) cond_signal(CV);
         }
+        printf("Demon %d leaves (D_CNT=%d, N_CNT=%d, state = %s)\n", demon_id, H->demon_count, H->nomad_count, state_str[H->state]);
 
         cond_unlock(CV);
         // Wander outside (1 to 5 seconds)
