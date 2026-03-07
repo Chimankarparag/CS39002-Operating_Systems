@@ -14,8 +14,8 @@
 #define EXECV_PARM_LEN 16 // for storing execv parameters
 
 // Time
-#define DELTA 40000     // bigger delta range 25ms to 1s
-#define DELTA_DELAY 7000 // smaller delta range 5ms to 10ms
+#define DELTA 50000     // bigger delta range 25ms to 1s
+#define DELTA_DELAY 10000 // smaller delta range 5ms to 10ms
 
 // Semaphore indices
 #define SEM_RQ 0
@@ -42,6 +42,7 @@ typedef struct {
     int next_interrupt;
     pid_t manager_pid;
     pid_t timer_pid;
+    int is_started;
 } T_type;
 
 typedef struct {

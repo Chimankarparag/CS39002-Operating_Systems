@@ -13,8 +13,8 @@
 #define MAX_PROC 100
 
 // Time
-#define DELTA 40000     // bigger delta range 25ms to 1s
-#define DELTA_DELAY 7000 // smaller delta range 5ms to 10ms
+#define DELTA 50000     // bigger delta range 25ms to 1s
+#define DELTA_DELAY 10000 // smaller delta range 5ms to 10ms
 
 // Semaphore indices
 #define SEM_RQ 0
@@ -47,6 +47,7 @@ typedef struct {
     int next_interrupt;
     pid_t manager_pid;
     pid_t timer_pid;
+    int is_started;
 } T_type;
 
 typedef struct {
@@ -165,8 +166,14 @@ int main(int argc, char *argv[]) {
 
     printf("[%d] Process %d: Arrival with priority = %d\n", local_t, id, priority);
 
-    //
-    if (id == 0) signal_sem(semid, SEM_SYNC); 
+    // Wait for timer to start and set initial time
+    wait_sem(semid, SEM_T); 
+    if (shm->t_info.is_started == 0) {
+        shm->t_info.is_started = 1; 
+        signal_sem(semid, SEM_SYNC);         
+    }
+    signal_sem(semid, SEM_T);
+
     schedule_next(0);
 
     int cb_idx = 0, io_idx = 0;

@@ -29,4 +29,4 @@ run: all
 	./launcher 
 
 clean:
-	rm -f manager timer launcher process genburst burst.txt
+	rm -f manager timer launcher process genburst 

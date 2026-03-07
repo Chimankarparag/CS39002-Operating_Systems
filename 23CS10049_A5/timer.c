@@ -13,8 +13,8 @@
 #define MAX_PROC 100
 
 // Time
-#define DELTA 40000     // bigger delta range 25ms to 1s
-#define DELTA_DELAY 7000 // smaller delta range 5ms to 10ms
+#define DELTA 50000     // bigger delta range 25ms to 1s
+#define DELTA_DELAY 10000 // smaller delta range 5ms to 10ms
 
 // Semaphore indices
 #define SEM_RQ 0
@@ -41,6 +41,7 @@ typedef struct {
     int next_interrupt;
     pid_t manager_pid;
     pid_t timer_pid;
+    int is_started;
 } T_type;
 
 typedef struct {
@@ -118,7 +119,7 @@ int main() {
 
         // mutex for sync
         wait_sem(semid,SEM_SYNC);
-        usleep(DELTA_DELAY);
+            usleep(DELTA_DELAY);
         signal_sem(semid, SEM_SYNC);
 
     }
