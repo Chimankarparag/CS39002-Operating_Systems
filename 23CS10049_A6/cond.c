@@ -16,11 +16,11 @@ typedef struct{
 #define MTX 0
 #define CND 1
 
-union semun {
-    int val;
-    struct semid_ds *buf;
-    unsigned short *array;
-};
+// union semun {
+//     int val;
+//     struct semid_ds *buf;
+//     unsigned short *array;
+// };
 
 cond_t cond_create(key_t token1, key_t token2){
     cond_t CV;
