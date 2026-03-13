@@ -1,24 +1,26 @@
-CC      = gcc
-CFLAGS  = -Wall -Wextra -g
+CPP      = g++
+CPPFLAGS  = -Wall -g std=c++17
+LDFLAGS = -pthread
 
-all: foobar
+TARGET   = manufacture
 
 fooschedule.txt: run-genschedule
 barschedule.txt: run-genschedule
 
-genschedule: genschedule.c 
-	$(CC) $(CFLAGS) -o genschedule genschedule.c
+genschedule: genschedule.cpp
+	$(CPP) $(CPPFLAGS) -o genschedule genschedule.cpp
 
-foobar: foobar.c manager.c work.c global.c 
-	$(CC) $(CFLAGS) -o foobar genschedule.c
+$(TARGET): foobar.cpp global.cpp manager.cpp work.cpp
+	$(CPP) $(CPPFLAGS) -o $(TARGET) foobar.cpp $(LDFLAGS)
 
 run-genschedule: genschedule
 	./genschedule 16 20 3 5 fooschedule.txt barschedule.txt
 
-rundemo: foobar fooschedule.txt barschedule.txt
-	./foobar 2 1 fooschedule.txt barschedule.txt
+run: $(TARGET) fooschedule.txt barschedule.txt
+	./$(TARGET) 2 1 fooschedule.txt barschedule.txt
 
 clean:
-	rm -f foobar work manager global
+	rm -f $(TARGET)
+	rm -f fooschedule.txt barschedule.txt
 
-.PHONY: all demorun clean
+.PHONY: genschedule run run-genschedule clean

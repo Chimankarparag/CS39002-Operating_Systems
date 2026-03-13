@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <iostream>
+#include <vector>
+#include <string>
 #include <pthread.h>
 
 // limits 
@@ -17,7 +17,7 @@ int N[2];       // 0-> parts of foocar, 1-> parts of barcar
 int Mcar[2];    // workers for foocar and barcar  
 int M;          // max of both workers
 
-// 
+// Car_type
 enum car_type{
     FOOCAR,
     BARCAR
