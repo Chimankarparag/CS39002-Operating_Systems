@@ -168,9 +168,10 @@ void printWorker() {
 }
 
 void printCol(int w, const string& act) {
-    printf("  ");
-    for (int i = 0; i < w; i++) printf("          "); // 10 spaces per column
-    printf("%-9s\n", act.c_str());
+    int col = 3 + (w * 10); 
+    // \033[nG tells the terminal to jump to column 'n'
+    printf("\033[%dG%-9s", col, act.c_str());
+    fflush(stdout);
 }
 
 bool prereqsDone(int p) {

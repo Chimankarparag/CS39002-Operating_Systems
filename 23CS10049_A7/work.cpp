@@ -17,6 +17,7 @@ void* workerFunc(void *arg){
         if(allDone){
             pthread_mutex_lock(&mtx);
             printCol(w," Quit");
+            printf("\n");
             pthread_mutex_unlock(&mtx);
             pthread_exit(nullptr);
         }
@@ -30,6 +31,7 @@ void* workerFunc(void *arg){
             pthread_mutex_lock(&mtx);
             WSTAT[w]= WState::DONE;
             printCol(w,"All Done");
+            printf("\n");
             pthread_mutex_unlock(&mtx);
 
         }else{
@@ -45,6 +47,7 @@ void* workerFunc(void *arg){
                 if(!prereqsDone(p)){
                     WSTAT[w]= WState::WAITING;
                     printCol(w, "Wait " + to_string(p));
+                    printf("\n");
                 
                     // The while-loop guards against spurious wakeups:
                     // pthread_cond_wait may return even without a signal,
@@ -55,6 +58,7 @@ void* workerFunc(void *arg){
                     // the last remaining pre req wakes this w
                     WSTAT[w] = WState::WORKING;
                 }
+                
                 // cond wait regains mtx
 
                 // complete the part p
@@ -73,11 +77,12 @@ void* workerFunc(void *arg){
                         // but that q_before has prereq left
                         // so we might miss-wake him for q, and he starts working q_before
                         if(WSTAT[nextWorker] == WState::WAITING && WINFO[nextWorker]== q){
-                            printCol(w, "Wake up");
+                            printCol(nextWorker, "Wake up");
                             pthread_cond_signal(&cnd[nextWorker]);                            
                         }
                     }
                 }
+                printf("\n");
                 // release mtx
                 pthread_mutex_unlock(&mtx);
 
@@ -86,6 +91,7 @@ void* workerFunc(void *arg){
             pthread_mutex_lock(&mtx);
             WSTAT[w] = WState::DONE;
             printCol(w, "All done");
+            printf("\n");
             pthread_mutex_unlock(&mtx);
         }
         pthread_barrier_wait(&eop);
