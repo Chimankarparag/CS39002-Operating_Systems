@@ -2,7 +2,6 @@
 // runs the production sequence, and waits for all workers to finish.
 // exit when all the cares are produced and all workers have quit.
 // predeclared func
-#include "global.cpp" 
 void* workerFunc(void* arg);
 
 static void buildSeq(int f, int b){
@@ -20,6 +19,7 @@ static void buildSeq(int f, int b){
 }
 
 void runManager(int f, int b){
+
     buildSeq(f,b);
     M_total = max(Foocar.M, Barcar.M);
 
@@ -40,7 +40,9 @@ void runManager(int f, int b){
     }
 
     vector<pthread_t> workers(M_total);
+    vector<int>id(M_total);
     for (long w = 0; w < M_total; w++) {
+        // id[w]=w;
         pthread_create(&workers[w], nullptr, workerFunc, (void*)w);
     }
 
@@ -60,7 +62,7 @@ void runManager(int f, int b){
     }
 
     allDone = true;
-    printf("\n+++ALL productions completed");
+    printf("\n+++ ALL productions completed\n");
     printWorker();
 
     pthread_barrier_wait(&bop); // Release workers one last time so they can quit

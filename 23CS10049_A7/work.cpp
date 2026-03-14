@@ -7,20 +7,20 @@
 // WINFO and WSTAT arrays
 
 // once done call for exit
-#include "global.cpp" 
-
-void* workFunc(void *arg){
-    int w = *(int*)arg;
+void* workerFunc(void *arg){
+    int w = (long)arg;
 
     while(true){
         // wait for all to join
         pthread_barrier_wait(&bop);
 
         if(allDone){
-            printCol(w,"Quit");
+            pthread_mutex_lock(&mtx);
+            printCol(w," Quit");
+            pthread_mutex_unlock(&mtx);
             pthread_exit(nullptr);
         }
-        
+  
         // if this worker is not involved, ie w > blacar.M
         // print all done and update status
         // currCar set to Global object Blacar in manager before &bop

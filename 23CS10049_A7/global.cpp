@@ -115,27 +115,27 @@ class CarData{
 
         // Pretty-print dependencies, prerequisites and worker assignments.
         void print_info() const {
-        printf("+++ %s\n", name.c_str());
+        printf("\n+++ %s\n", name.c_str());
 
-        printf("   Dependencies\n");
+        printf("\n   Dependencies\n");
         for (int p = 0; p < N; p++) {
             printf("   %2d ->", p);
             for (int d : deps[p]) printf(" %d", d);
-            printf("\n\n");
+            printf("\n");
         }
 
-        printf("   Prerequisites\n");
+        printf("\n   Prerequisites\n");
         for (int p = 0; p < N; p++) {
             printf("   %2d <-", p);
             for (int q : prereqs[p]) printf(" %d", q);
-            printf("\n\n");
+            printf("\n");
         }
 
-        printf("   Worker assignment\n");
+        printf("\n   Worker assignment\n");
         for (int w = 0; w < M; w++) {
             printf("   %2d :", w);
             for (int p : workerAsgn[w]) printf(" %d", p);
-            printf("\n\n");
+            printf("\n");
         }
     }
 };
@@ -159,15 +159,17 @@ pthread_barrier_t eop;  // end of production, used by all threads
 
 // utiily functions 
 
-void printWorker(){
-    for(int w = 0; w < M_total; w++) printf("WORKER %-2d",w);
-    printf("\n");
-    for(int w = 0; w < M_total; w++) printf("--------- ");
+void printWorker() {
+    printf("\n  ");
+    for (int w = 0; w < M_total; w++) printf("WORKER %-2d ", w);
+    printf("\n  ");
+    for (int w = 0; w < M_total; w++) printf("--------- ");
     printf("\n");
 }
 
 void printCol(int w, const string& act) {
-    for (int i = 0; i < w; i++) printf("          "); 
+    printf("  ");
+    for (int i = 0; i < w; i++) printf("          "); // 10 spaces per column
     printf("%-9s\n", act.c_str());
 }
 
