@@ -11,6 +11,56 @@
 #include <pthread.h>
 
 using namespace std;
+   
+#ifdef __APPLE__
+#include <errno.h>
+/* pthread barrier shim for macOS */
+#define PTHREAD_BARRIER_SERIAL_THREAD 1
+typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    unsigned count;
+    unsigned waiting;
+    unsigned phase;
+} pthread_barrier_t;
+
+static inline int pthread_barrier_init(pthread_barrier_t *barrier, const void *, unsigned count)
+{
+    if (count == 0) return EINVAL;
+    pthread_mutex_init(&barrier->mutex, nullptr);
+    pthread_cond_init(&barrier->cond, nullptr);
+    barrier->count = count;
+    barrier->waiting = 0;
+    barrier->phase = 0;
+    return 0;
+}
+
+static inline int pthread_barrier_wait(pthread_barrier_t *barrier)
+{
+    pthread_mutex_lock(&barrier->mutex);
+    unsigned phase = barrier->phase;
+    barrier->waiting++;
+    if (barrier->waiting == barrier->count) {
+        barrier->phase++;
+        barrier->waiting = 0;
+        pthread_cond_broadcast(&barrier->cond);
+        pthread_mutex_unlock(&barrier->mutex);
+        return PTHREAD_BARRIER_SERIAL_THREAD;
+    }
+    while (phase == barrier->phase) {
+        pthread_cond_wait(&barrier->cond, &barrier->mutex);
+    }
+    pthread_mutex_unlock(&barrier->mutex);
+    return 0;
+}
+
+static inline int pthread_barrier_destroy(pthread_barrier_t *barrier)
+{
+    pthread_mutex_destroy(&barrier->mutex);
+    pthread_cond_destroy(&barrier->cond);
+    return 0;
+}
+#endif
 
 /* ── Part-status codes ──────────────────────────────────────────────── */
 #define PENDING   0
@@ -23,7 +73,8 @@ using namespace std;
 #define WDONE     3   // finished every part in to-do list for this car
 
 /* ── Per-car specification ──────────────────────────────────────────── */
-struct CarData {
+class CarData {
+    public:
     int N{0}, M{0};             // #parts, #workers dedicated to this car type
     string name;                // "Foocar" or "Barcar"
 

@@ -1,26 +1,31 @@
-CPP      = g++
-CPPFLAGS  = -Wall -g std=c++17
-LDFLAGS = -pthread
+CLANG    = clang++
+GPP 	 = g++
+C 		 = gcc
+CFLAGS	 = -Wall -Wextra -g
+CXXFLAGS = -Wall -g -std=c++17 -stdlib=libc++
+LDFLAGS  = -pthread
 
 TARGET   = manufacture
+GEN      = genschedule
 
-fooschedule.txt: run-genschedule
-barschedule.txt: run-genschedule
+.PHONY: compile run rundemo clean
 
-genschedule: genschedule.cpp
-	$(CPP) $(CPPFLAGS) -o genschedule genschedule.cpp
+compile: $(TARGET) $(GEN)
 
 $(TARGET): foobar.cpp global.cpp manager.cpp work.cpp
-	$(CPP) $(CPPFLAGS) -o $(TARGET) foobar.cpp $(LDFLAGS)
+	$(CLANG) $(CXXFLAGS) -o $(TARGET) foobar.cpp $(LDFLAGS)
 
-run-genschedule: genschedule
-	./genschedule 16 20 3 5 fooschedule.txt barschedule.txt
+$(GEN): genschedule.c
+	$(C) $(CFLAGS) -o $(GEN) genschedule.c
 
-run: $(TARGET) fooschedule.txt barschedule.txt
+run-genschedule:
+	./$(GEN) 16 20 3 5 fooschedule.txt barschedule.txt
+
+run: $(TARGET) 
 	./$(TARGET) 2 1 fooschedule.txt barschedule.txt
 
-clean:
-	rm -f $(TARGET)
-	rm -f fooschedule.txt barschedule.txt
+rundemo: run
 
-.PHONY: genschedule run run-genschedule clean
+clean:
+	rm -f $(TARGET) $(GEN)
+	rm -f demofoo.txt demobar.txt
