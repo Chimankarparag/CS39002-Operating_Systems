@@ -124,6 +124,7 @@ static void s1(int k, int f)
     long long B = G + SZ_CHAR_ARRAY;
     long long r = B + SZ_CHAR_ARRAY;
     long long g = r + SZ_CHAR_ARRAY;
+    long long b = g + SZ_CHAR_ARRAY;
 
     for (int i = 0; i < ROWS; ++i) {
         for (int j = 0; j < COLS; ++j) {
@@ -148,7 +149,7 @@ static void s1(int k, int f)
             long long outOffset = (long long)i * COLS + j;
             accessPage(&lru, pageOf(r + outOffset));
             accessPage(&lru, pageOf(g + outOffset));
-            accessPage(&lru, pageOf(g + SZ_CHAR_ARRAY + outOffset));
+            accessPage(&lru, pageOf(b + outOffset));
         }
     }
 
@@ -208,7 +209,7 @@ static void s2(int k, int f)
 static void s3(int k, int f)
 {
     LRU lru;
-    lru_init(&lru, f);
+    init(&lru, f);
 
     long long RGB = 0;
     long long rgb = SZ_PIXEL_ARRAY;
@@ -248,7 +249,7 @@ static void s3(int k, int f)
 static void s4(int k, int f)
 {
     LRU lru;
-    lru_init(&lru, f);
+    init(&lru, f);
 
     long long RP = 0;
     long long R  = RP + SZ_PTR_BLOCK;
@@ -312,7 +313,7 @@ static void s4(int k, int f)
 static void s5(int k, int f)
 {
     LRU lru;
-    lru_init(&lru, f);
+    init(&lru, f);
 
     long long RGBP = 0;
     long long RGB  = RGBP + SZ_PTR_BLOCK;
@@ -370,7 +371,7 @@ static void s5(int k, int f)
 static void s6(int k, int f)
 {
     LRU lru;
-    lru_init(&lru, f);
+    init(&lru, f);
 
     long long RGBP = 0;
     long long RGB  = RGBP + SZ_PTR_BLOCK;
